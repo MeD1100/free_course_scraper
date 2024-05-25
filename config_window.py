@@ -44,6 +44,19 @@ class ConfigWindow:
             self.app.max_age_hours = int(self.max_age_var.get())
             self.app.save_location = self.save_location_var.get()
             self.app.email_address = self.email_var.get()
+
+            # Ensure the 'Settings' section exists
+            if not self.app.config.has_section('Settings'):
+                self.app.config.add_section('Settings')
+            
+            # Save to config file
+            self.app.config.set('Settings', 'max_age_hours', str(self.app.max_age_hours))
+            self.app.config.set('Settings', 'save_location', self.app.save_location)
+            self.app.config.set('Settings', 'email_address', self.app.email_address)
+            
+            with open('config.ini', 'w') as configfile:
+                self.app.config.write(configfile)
+            
             self.root.destroy()
             self.app.log_message("Configuration saved.", 'info')
         except ValueError:

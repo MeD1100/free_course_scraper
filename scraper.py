@@ -129,9 +129,10 @@ class Scraper:
 
                         course_info = (title, category, link, release_time_text, release_time)
 
-                        # Stop scraping if a course older than a day is found
-                        if (datetime.now() - release_time).days >= 1:
-                            self.app.log_message("Found a course older than a day. Stopping scraping.", 'header')
+                        # Stop scraping if a course older than max_age_hours is found
+                        max_age = datetime.now() - timedelta(hours=self.app.max_age_hours)
+                        if release_time < max_age:
+                            self.app.log_message(f"Found a course older than {self.app.max_age_hours} hours. Stopping scraping.", 'header')
                             stop_scraping = True
                             break
 

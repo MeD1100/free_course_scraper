@@ -19,8 +19,11 @@ class NewsScraperApp:
         self.config = configparser.ConfigParser()
         self.config.read('config.ini')
         self.driver_path = self.config.get('Paths', 'driver_path')
+        self.max_age_hours = self.config.getint('Settings', 'max_age_hours', fallback=24)
+        self.save_location = self.config.get('Settings', 'save_location', fallback=os.getcwd())
+        self.email_address = self.config.get('Settings', 'email_address', fallback="")
 
-        self.log = scrolledtext.ScrolledText(root, state='disabled', height=20, width=80, bg='#1e1e1e', fg='white', font=('Arial', 12), insertbackground='white')
+        self.log = scrolledtext.ScrolledText(root, state='disabled', height=15, width=80, bg='#1e1e1e', fg='white', font=('Arial', 12), insertbackground='white')
         self.log.grid(row=0, column=0, columnspan=3, padx=10, pady=10, sticky='nsew')
 
         self.start_button = tk.Button(root, text="Start Scraping", command=self.start_scraping, bg='#4caf50', fg='white', font=('Arial', 12))
@@ -33,9 +36,6 @@ class NewsScraperApp:
         self.stop_event = Event()
         self.scraper_thread = None
         self.all_courses = set()
-        self.max_age_hours = 24
-        self.save_location = os.getcwd()
-        self.email_address = ""
 
     def log_message(self, message, tag=None):
         self.log.configure(state='normal')
