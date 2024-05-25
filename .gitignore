@@ -1,0 +1,21 @@
+# Ignoring AWS credentials and Access keys
+course_emailer_accessKeys.csv
+course_emailer_credentials.csv
+
+# Ignoring virtual environment folder
+.venv/*
+
+# Ignoring environment variable file
+.env
+
+# Ignoring chromedriver folder
+chromedriver_win64/*
+
+# Ingoring config.ini file
+config.ini
+
+# Ignoring pycache
+__pycache__/*
+
+# Ignoring xlsx files
+*.xlsx
