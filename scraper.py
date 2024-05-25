@@ -9,7 +9,7 @@ import time
 from datetime import datetime, timedelta
 from email_service import send_email_notification
 from utils import save_to_excel
-
+from plyer import notification
 
 class Scraper:
     def __init__(self, app):
@@ -66,9 +66,14 @@ class Scraper:
                 return None
         except ValueError as e:
             self.app.log_message(f"Error parsing release time: {release_time_text}. Exception: {e}", 'error')
+            notification.notify(
+                title='Scraping Error',
+                message=f"Error parsing release time: {release_time_text}. Exception: {e}",
+                app_name='Course Scraper',
+                timeout=5
+            )
             return None
         return release_time
-
 
     def scrape_courses(self):
         self.initialize_driver()
@@ -87,6 +92,12 @@ class Scraper:
                 self.app.log_message("Clicked the checkbox using ActionChains.", 'info')
             except Exception as e:
                 self.app.log_message(f"Failed to click using ActionChains. Exception: {str(e)}", 'error')
+                notification.notify(
+                    title='Scraping Error',
+                    message=f"Failed to click using ActionChains. Exception: {str(e)}",
+                    app_name='Course Scraper',
+                    timeout=5
+                )
 
             self.app.log_message("Waiting for the page to update after clicking...", 'header')
             time.sleep(3)  # Increased sleep time
@@ -140,8 +151,22 @@ class Scraper:
                         scraped_links.add(link)
                         new_courses.add(course_info)
                         self.app.log_message(f"Course Title: {title}\nCategory: {category}\nLink: {link}\nRelease Time: {release_time_text}\n----------------------------------------", 'info')
-                    except (NoSuchElementException, StaleElementReferenceException):
+                    except NoSuchElementException as e:
                         self.app.log_message("No such element found for one of the course details. Skipping this course.", 'error')
+                        notification.notify(
+                            title='Scraping Error',
+                            message='No such element found for one of the course details. Skipping this course.',
+                            app_name='Course Scraper',
+                            timeout=5
+                        )
+                    except StaleElementReferenceException as e:
+                        self.app.log_message("Stale element reference for one of the course details. Skipping this course.", 'error')
+                        notification.notify(
+                            title='Scraping Error',
+                            message='Stale element reference for one of the course details. Skipping this course.',
+                            app_name='Course Scraper',
+                            timeout=5
+                        )
 
                 if stop_scraping:
                     break
@@ -165,12 +190,30 @@ class Scraper:
                     break
                 except Exception as e:
                     self.app.log_message(f"Failed to click 'Load More' button. Exception: {str(e)}", 'error')
+                    notification.notify(
+                        title='Scraping Error',
+                        message=f"Failed to click 'Load More' button. Exception: {str(e)}",
+                        app_name='Course Scraper',
+                        timeout=5
+                    )
                     break
 
         except TimeoutException as e:
             self.app.log_message(f"Timeout while waiting for an element. Exception: {str(e)}", 'error')
+            notification.notify(
+                title='Scraping Error',
+                message=f"Timeout while waiting for an element. Exception: {str(e)}",
+                app_name='Course Scraper',
+                timeout=5
+            )
         except Exception as e:
             self.app.log_message(f"An error occurred: {str(e)}", 'error')
+            notification.notify(
+                title='Scraping Error',
+                message=f"An error occurred: {str(e)}",
+                app_name='Course Scraper',
+                timeout=5
+            )
         finally:
             if self.app.all_courses:
                 sorted_courses = sorted(self.app.all_courses, key=lambda x: x[4])
@@ -180,6 +223,18 @@ class Scraper:
                     send_email_notification(self.app.email_address, sorted_courses)
                     self.app.log_message("Email notification sent successfully.", 'info')
                     self.app.stop_event.set()  # Stop scraping after sending the email
+                    notification.notify(
+                        title='Scraping Completed',
+                        message='The scraping process has completed successfully.',
+                        app_name='Course Scraper',
+                        timeout=5
+                    )
                 except Exception as e:
                     self.app.log_message(f"Failed to send email notification. Exception: {str(e)}", 'error')
+                    notification.notify(
+                        title='Email Error',
+                        message=f"Failed to send email notification. Exception: {str(e)}",
+                        app_name='Course Scraper',
+                        timeout=5
+                    )
             self.driver.quit()
