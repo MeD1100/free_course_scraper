@@ -35,8 +35,19 @@ class Scraper:
         current_time = datetime.now()
         try:
             if 'minute' in release_time_text:
-                minutes = int(release_time_text.split()[0])
+                minutes = release_time_text.split()[0]
+                if minutes == 'a':
+                    minutes = 1
+                else:
+                    minutes = int(minutes)
                 release_time = current_time - timedelta(minutes=minutes)
+            elif 'second' in release_time_text:
+                seconds = release_time_text.split()[0]
+                if seconds == 'a':
+                    seconds = 1
+                else:
+                    seconds = int(seconds)
+                release_time = current_time - timedelta(seconds=seconds)
             elif 'hour' in release_time_text:
                 hours = release_time_text.split()[0]
                 if hours == 'an':
@@ -57,6 +68,7 @@ class Scraper:
             self.app.log_message(f"Error parsing release time: {release_time_text}. Exception: {e}", 'error')
             return None
         return release_time
+
 
     def scrape_courses(self):
         self.initialize_driver()
@@ -88,25 +100,26 @@ class Scraper:
             self.app.log_message("Waiting for the page to update after selecting category...", 'header')
             time.sleep(3)  # Increased sleep time
 
-            self.app.all_courses = set()  # To keep track of all scraped courses and avoid duplicates
+            scraped_links = set()  # To keep track of all scraped course links
 
             stop_scraping = False
             while not self.app.stop_event.is_set() and not stop_scraping:
                 self.app.log_message("Extracting course information...", 'header')
-
-                # Get the current list of courses before clicking "Load More"
-                current_courses = self.wait.until(EC.visibility_of_all_elements_located((By.TAG_NAME, 'li')))
-                initial_course_count = len(current_courses)
-                
+                courses = self.wait.until(EC.visibility_of_all_elements_located((By.TAG_NAME, 'li')))
                 new_courses = set()
 
-                for course in current_courses:
+                for course in courses:
                     if self.app.stop_event.is_set():
                         break
                     try:
+                        link_element = course.find_element(By.TAG_NAME, 'a')
+                        link = link_element.get_attribute('href')
+                        
+                        if link in scraped_links:
+                            continue
+                        
                         title = course.find_element(By.TAG_NAME, 'h3').text if course.find_elements(By.TAG_NAME, 'h3') else 'No Title'
                         category = course.find_element(By.TAG_NAME, 'h5').text if course.find_elements(By.TAG_NAME, 'h5') else 'No Category'
-                        link = course.find_element(By.TAG_NAME, 'a').get_attribute('href') if course.find_elements(By.TAG_NAME, 'a') else 'No Link'
                         release_time_text = course.find_element(By.CSS_SELECTOR, 'div.col-auto.ml-0.pl-0.pr-0.mr-0').text if course.find_elements(By.CSS_SELECTOR, 'div.col-auto.ml-0.pl-0.pr-0.mr-0') else 'No Release Time'
                         if 'out-ad' in link or title == 'No Title' or link == 'No Link':
                             continue
@@ -122,10 +135,10 @@ class Scraper:
                             stop_scraping = True
                             break
 
-                        # Check if the course is already in the set
-                        if course_info not in self.app.all_courses:
-                            new_courses.add(course_info)
-                            self.app.log_message(f"Course Title: {title}\nCategory: {category}\nLink: {link}\nRelease Time: {release_time_text}\n----------------------------------------", 'info')
+                        # Add the course link to the set of scraped links
+                        scraped_links.add(link)
+                        new_courses.add(course_info)
+                        self.app.log_message(f"Course Title: {title}\nCategory: {category}\nLink: {link}\nRelease Time: {release_time_text}\n----------------------------------------", 'info')
                     except (NoSuchElementException, StaleElementReferenceException):
                         self.app.log_message("No such element found for one of the course details. Skipping this course.", 'error')
 
@@ -135,25 +148,17 @@ class Scraper:
                 if self.app.stop_event.is_set():
                     break
 
-                if new_courses:
-                    self.app.all_courses.update(new_courses)
-                else:
+                if not new_courses:
                     self.app.log_message("No new courses found or stopping condition met. Stopping.", 'header')
                     break
+
+                self.app.all_courses.update(new_courses)
 
                 try:
                     load_more_button = self.wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'input.btn.btn-primary.mb-5')))
                     load_more_button.click()
                     self.app.log_message("Clicked the 'Load More' button.", 'info')
                     time.sleep(3)  # Increased sleep time
-                    
-                    # Get the updated list of courses after clicking "Load More"
-                    updated_courses = self.wait.until(EC.visibility_of_all_elements_located((By.TAG_NAME, 'li')))
-                    new_courses_only = updated_courses[initial_course_count:]  # Get only the new courses added
-
-                    if not new_courses_only:
-                        self.app.log_message("No new courses found after clicking 'Load More'. Stopping.", 'header')
-                        break
                 except TimeoutException:
                     self.app.log_message("No more 'Load More' button found. All courses loaded.", 'header')
                     break
@@ -173,6 +178,7 @@ class Scraper:
                 try:
                     send_email_notification(self.app.email_address, sorted_courses)
                     self.app.log_message("Email notification sent successfully.", 'info')
+                    self.app.stop_event.set()  # Stop scraping after sending the email
                 except Exception as e:
                     self.app.log_message(f"Failed to send email notification. Exception: {str(e)}", 'error')
             self.driver.quit()

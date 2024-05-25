@@ -54,7 +54,8 @@ class NewsScraperApp:
 
     def stop_scraping(self):
         self.stop_event.set()
-        self.scraper_thread.join()
+        if self.scraper_thread.is_alive():
+            self.scraper_thread.join()
         self.start_button.config(state='normal')
         self.stop_button.config(state='disabled')
         self.config_button.config(state='normal')
@@ -68,6 +69,9 @@ class NewsScraperApp:
     def scrape_courses(self):
         scraper = Scraper(self)
         scraper.scrape_courses()
+        self.start_button.config(state='normal')
+        self.stop_button.config(state='disabled')
+        self.config_button.config(state='normal')
 
 def main():
     root = tk.Tk()
