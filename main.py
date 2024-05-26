@@ -21,7 +21,7 @@ class NewsScraperApp:
         self.config = configparser.ConfigParser()
         self.config.read('config.ini')
         self.driver_path = self.config.get('Paths', 'driver_path')
-        self.max_age_hours = self.config.getint('Settings', 'max_age_hours', fallback=24)
+        self.max_age_minutes = self.config.getint('Settings', 'max_age_minutes', fallback=60)  # Default to 60 minutes
         self.save_location = self.config.get('Settings', 'save_location', fallback=os.getcwd())
         self.email_address = self.config.get('Settings', 'email_address', fallback="")
 
@@ -42,11 +42,15 @@ class NewsScraperApp:
         self.schedule_start_button.grid(row=3, column=0, sticky='ew', padx=10, pady=10)
         self.schedule_stop_button = ttk.Button(root, text="Stop Schedule", command=self.stop_schedule, state='disabled')
         self.schedule_stop_button.grid(row=3, column=1, sticky='ew', padx=10, pady=10)
+        self.schedule_status_button = ttk.Button(root, text="Schedule Status", command=self.show_schedule_status)
+        self.schedule_status_button.grid(row=3, column=2, sticky='ew', padx=10, pady=10)
 
         self.stop_event = Event()
         self.scraper_thread = None
         self.all_courses = set()
         self.scheduler = ScraperScheduler(self)
+
+        self.update_schedule_buttons()
 
     def log_message(self, message, tag=None):
         self.log.configure(state='normal')
@@ -98,15 +102,25 @@ class NewsScraperApp:
         ConfigWindow(config_window, self)
 
     def start_schedule(self):
-        interval_hours = self.max_age_hours  # Adjust this as needed
-        self.scheduler.start(interval_hours)
-        self.schedule_start_button.config(state='disabled')
-        self.schedule_stop_button.config(state='normal')
+        interval_minutes = self.max_age_minutes  # Adjust this as needed
+        self.scheduler.start(interval_minutes / 60.0)  # Convert to hours for scheduler
+        self.update_schedule_buttons()
 
     def stop_schedule(self):
         self.scheduler.stop()
-        self.schedule_start_button.config(state='normal')
-        self.schedule_stop_button.config(state='disabled')
+        self.update_schedule_buttons()
+
+    def show_schedule_status(self):
+        status = self.scheduler.status()
+        self.log_message(status, 'info')
+
+    def update_schedule_buttons(self):
+        if self.scheduler.is_running():
+            self.schedule_start_button.config(state='disabled')
+            self.schedule_stop_button.config(state='normal')
+        else:
+            self.schedule_start_button.config(state='normal')
+            self.schedule_stop_button.config(state='disabled')
 
     def scrape_courses(self):
         scraper = Scraper(self)
