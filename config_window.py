@@ -9,22 +9,22 @@ class ConfigWindow:
         self.center_window(600, 300)  # Adjusted width to 600 pixels
         self.root.configure(bg='#2e2e2e')
 
-        tk.Label(root, text="Max Age (Hours)", bg='#2e2e2e', fg='white', font=('Arial', 12)).grid(row=0, column=0, padx=10, pady=10, sticky='w')
+        tk.Label(root, text="Max Age (hours)", bg='#2e2e2e', fg='white', font=('Arial', 12)).grid(row=0, column=0, padx=10, pady=10, sticky='w')
 
-        self.max_age_var = tk.IntVar(value=self.app.max_age_minutes // 60)  # Convert minutes to hours for the slider
-        self.max_age_slider = ttk.Scale(root, from_=1, to=24, orient=tk.HORIZONTAL, variable=self.max_age_var, length=300, command=self.update_max_age_label)
+        self.max_age_var = tk.IntVar(value=self.app.max_age_minutes // 60)  # Convert minutes to hours
+        self.max_age_slider = ttk.Scale(root, from_=2, to=24, orient=tk.HORIZONTAL, variable=self.max_age_var, length=300, command=self.update_max_age_label)
         self.max_age_slider.grid(row=0, column=1, padx=10, pady=10, sticky='ew', columnspan=2)
 
-        self.max_age_label = tk.Label(root, text=f"{self.app.max_age_minutes // 60} hour{'s' if self.app.max_age_minutes // 60 > 1 else ''}", bg='#2e2e2e', fg='white', font=('Arial', 12))
+        self.max_age_label = tk.Label(root, text=f"{self.app.max_age_minutes // 60} hours", bg='#2e2e2e', fg='white', font=('Arial', 12))
         self.max_age_label.grid(row=0, column=3, padx=10, pady=10, sticky='w')
 
         tk.Label(root, text="Save Location", bg='#2e2e2e', fg='white', font=('Arial', 12)).grid(row=1, column=0, padx=10, pady=10, sticky='w')
-        self.save_location_var = tk.StringVar(value=app.save_location if app.save_location else "")
+        self.save_location_var = tk.StringVar(value=self.app.save_location if self.app.save_location else "")
         tk.Entry(root, textvariable=self.save_location_var, bg='#1e1e1e', fg='white', font=('Arial', 12)).grid(row=1, column=1, padx=10, pady=10, sticky='ew', columnspan=2)
         tk.Button(root, text="Browse", command=self.browse_save_location, bg='#2196f3', fg='white', font=('Arial', 12)).grid(row=1, column=3, padx=10, pady=10, sticky='ew')
 
         tk.Label(root, text="Recipient Email", bg='#2e2e2e', fg='white', font=('Arial', 12)).grid(row=2, column=0, padx=10, pady=10, sticky='w')
-        self.email_var = tk.StringVar(value=app.email_address)
+        self.email_var = tk.StringVar(value=self.app.email_address)
         tk.Entry(root, textvariable=self.email_var, bg='#1e1e1e', fg='white', font=('Arial', 12)).grid(row=2, column=1, padx=10, pady=10, sticky='ew', columnspan=3)
 
         tk.Label(root, text="Category", bg='#2e2e2e', fg='white', font=('Arial', 12)).grid(row=3, column=0, padx=10, pady=10, sticky='w')
@@ -48,7 +48,7 @@ class ConfigWindow:
 
     def update_max_age_label(self, event):
         value = self.max_age_var.get()
-        self.max_age_label.config(text=f"{value} hour{'s' if value > 1 else ''}")
+        self.max_age_label.config(text=f"{value} hours")
 
     def browse_save_location(self):
         save_location = filedialog.askdirectory()
@@ -57,23 +57,23 @@ class ConfigWindow:
 
     def save_config(self):
         try:
-            self.app.max_age_minutes = self.max_age_var.get() * 60  # Convert hours back to minutes
+            self.app.max_age_minutes = self.max_age_var.get() * 60  # Convert hours to minutes
             self.app.save_location = self.save_location_var.get()
             self.app.email_address = self.email_var.get()
 
             # Ensure the 'Settings' section exists
             if not self.app.config.has_section('Settings'):
                 self.app.config.add_section('Settings')
-            
+
             # Save to config file
             self.app.config.set('Settings', 'max_age_minutes', str(self.app.max_age_minutes))
             self.app.config.set('Settings', 'save_location', self.app.save_location)
             self.app.config.set('Settings', 'email_address', self.app.email_address)
-            
+
             with open('config.ini', 'w') as configfile:
                 self.app.config.write(configfile)
-            
+
             self.root.destroy()
             self.app.log_message("Configuration saved.", 'info')
         except ValueError:
-            self.app.log_message("Invalid value for max age hours. Please enter a number.", 'error')
+            self.app.log_message("Invalid value for max age. Please enter a number.", 'error')

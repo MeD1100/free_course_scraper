@@ -141,10 +141,11 @@ class Scraper:
                         course_info = (title, category, link, release_time_text, release_time)
 
                         # Stop scraping if a course older than max_age_minutes is found
-                        max_age = datetime.now() - timedelta(hours=self.app.max_age_minutes // 60)  # Calculate max age in hours
+                        max_age = datetime.now() - timedelta(minutes=self.app.max_age_minutes)  # Calculate max age in minutes
                         if release_time < max_age:
-                            self.app.log_message(f"Found a course older than {self.app.max_age_minutes // 60} hour(s). Stopping scraping.", 'header')
+                            self.app.log_message(f"Found a course older than {self.app.max_age_minutes} minute(s). Stopping scraping.", 'header')
                             stop_scraping = True
+                            self.app.all_courses.update(new_courses)
                             break
 
                         # Add the course link to the set of scraped links
@@ -240,4 +241,12 @@ class Scraper:
                         app_name='Course Scraper',
                         timeout=5
                     )
+            else:
+                self.app.log_message("No courses found. Skipping file save and email notification.", 'info')
+                notification.notify(
+                    title='Scraping Completed',
+                    message='No courses found. Skipping file save and email notification.',
+                    app_name='Course Scraper',
+                    timeout=5
+                )
             self.driver.quit()
