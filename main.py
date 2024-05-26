@@ -8,6 +8,7 @@ from config_window import ConfigWindow
 from scraper import Scraper
 from utils import save_to_excel
 from plyer import notification
+from scheduler import ScraperScheduler
 
 class NewsScraperApp:
     def __init__(self, root):
@@ -27,16 +28,25 @@ class NewsScraperApp:
         self.log = scrolledtext.ScrolledText(root, state='disabled', height=15, width=80, bg='#1e1e1e', fg='white', font=('Arial', 12), insertbackground='white')
         self.log.grid(row=0, column=0, columnspan=3, padx=10, pady=10, sticky='nsew')
 
+        self.progress = ttk.Progressbar(root, orient="horizontal", length=100, mode="determinate")
+        self.progress.grid(row=1, column=0, columnspan=3, padx=10, pady=10, sticky='ew')
+
         self.start_button = ttk.Button(root, text="Start Scraping", command=self.start_scraping)
-        self.start_button.grid(row=1, column=0, sticky='ew', padx=10, pady=10)
+        self.start_button.grid(row=2, column=0, sticky='ew', padx=10, pady=10)
         self.stop_button = ttk.Button(root, text="Stop Scraping", command=self.stop_scraping, state='disabled')
-        self.stop_button.grid(row=1, column=1, sticky='ew', padx=10, pady=10)
+        self.stop_button.grid(row=2, column=1, sticky='ew', padx=10, pady=10)
         self.config_button = ttk.Button(root, text="Config", command=self.open_config)
-        self.config_button.grid(row=1, column=2, sticky='ew', padx=10, pady=10)
+        self.config_button.grid(row=2, column=2, sticky='ew', padx=10, pady=10)
+
+        self.schedule_start_button = ttk.Button(root, text="Start Schedule", command=self.start_schedule)
+        self.schedule_start_button.grid(row=3, column=0, sticky='ew', padx=10, pady=10)
+        self.schedule_stop_button = ttk.Button(root, text="Stop Schedule", command=self.stop_schedule, state='disabled')
+        self.schedule_stop_button.grid(row=3, column=1, sticky='ew', padx=10, pady=10)
 
         self.stop_event = Event()
         self.scraper_thread = None
         self.all_courses = set()
+        self.scheduler = ScraperScheduler(self)
 
     def log_message(self, message, tag=None):
         self.log.configure(state='normal')
@@ -53,6 +63,7 @@ class NewsScraperApp:
 
     def start_scraping(self):
         self.stop_event.clear()
+        self.progress['value'] = 0
         self.scraper_thread = Thread(target=self.scrape_courses)
         self.scraper_thread.start()
         self.start_button.config(state='disabled')
@@ -86,18 +97,39 @@ class NewsScraperApp:
         config_window.grab_set()
         ConfigWindow(config_window, self)
 
+    def start_schedule(self):
+        interval_hours = self.max_age_hours  # Adjust this as needed
+        self.scheduler.start(interval_hours)
+        self.schedule_start_button.config(state='disabled')
+        self.schedule_stop_button.config(state='normal')
+
+    def stop_schedule(self):
+        self.scheduler.stop()
+        self.schedule_start_button.config(state='normal')
+        self.schedule_stop_button.config(state='disabled')
+
     def scrape_courses(self):
         scraper = Scraper(self)
         scraper.scrape_courses()
         self.start_button.config(state='normal')
         self.stop_button.config(state='disabled')
         self.config_button.config(state='normal')
+        self.progress['value'] = 100
+        self.log_message("Progress: 100% completed.", 'header')
+        self.root.after(2000, self.reset_progress)  # Reset progress bar after 2 seconds
         notification.notify(
             title='Scraping Completed',
             message='The scraping process has completed successfully.',
             app_name='Course Scraper',
             timeout=5
         )
+
+    def reset_progress(self):
+        self.progress['value'] = 0
+
+    def update_progress(self, value):
+        self.progress['value'] = value
+        self.root.update_idletasks()
 
 def main():
     root = tk.Tk()

@@ -118,8 +118,8 @@ class Scraper:
                 self.app.log_message("Extracting course information...", 'header')
                 courses = self.wait.until(EC.visibility_of_all_elements_located((By.TAG_NAME, 'li')))
                 new_courses = set()
-
-                for course in courses:
+                total_courses = len(courses)
+                for index, course in enumerate(courses):
                     if self.app.stop_event.is_set():
                         break
                     try:
@@ -151,6 +151,9 @@ class Scraper:
                         scraped_links.add(link)
                         new_courses.add(course_info)
                         self.app.log_message(f"Course Title: {title}\nCategory: {category}\nLink: {link}\nRelease Time: {release_time_text}\n----------------------------------------", 'info')
+                        # Update progress bar
+                        progress_value = (index + 1) / total_courses * 100
+                        self.app.update_progress(progress_value)
                     except NoSuchElementException as e:
                         self.app.log_message("No such element found for one of the course details. Skipping this course.", 'error')
                         notification.notify(
