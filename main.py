@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 import configparser
 from config_window import ConfigWindow
+from instructions_window import InstructionsWindow
 from scraper import Scraper
 from utils import save_to_excel
 from plyer import notification
@@ -14,14 +15,14 @@ class NewsScraperApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Course Scraper")
-        self.center_window(800, 600)
+        self.center_window(800, 500)  # Adjusted height to 500 pixels
         self.root.configure(bg='#2e2e2e')
 
         # Load configuration
         self.config = configparser.ConfigParser()
         self.config.read('config.ini')
         self.driver_path = self.config.get('Paths', 'driver_path')
-        self.max_age_minutes = self.config.getint('Settings', 'max_age_minutes', fallback=60)  # Default to 60 minutes
+        self.max_age_minutes = self.config.getint('Settings', 'max_age_minutes', fallback=120)  # Default to 120 minutes
         self.save_location = self.config.get('Settings', 'save_location', fallback=os.getcwd())
         self.email_address = self.config.get('Settings', 'email_address', fallback="")
 
@@ -29,21 +30,24 @@ class NewsScraperApp:
         self.log.grid(row=0, column=0, columnspan=3, padx=10, pady=10, sticky='nsew')
 
         self.progress = ttk.Progressbar(root, orient="horizontal", length=100, mode="determinate")
-        self.progress.grid(row=1, column=0, columnspan=3, padx=10, pady=10, sticky='ew')
+        self.progress.grid(row=1, column=0, columnspan=3, padx=10, pady=5, sticky='ew')
 
         self.start_button = ttk.Button(root, text="Start Scraping", command=self.start_scraping)
-        self.start_button.grid(row=2, column=0, sticky='ew', padx=10, pady=10)
+        self.start_button.grid(row=2, column=0, sticky='ew', padx=10, pady=5)
         self.stop_button = ttk.Button(root, text="Stop Scraping", command=self.stop_scraping, state='disabled')
-        self.stop_button.grid(row=2, column=1, sticky='ew', padx=10, pady=10)
+        self.stop_button.grid(row=2, column=1, sticky='ew', padx=10, pady=5)
         self.config_button = ttk.Button(root, text="Config", command=self.open_config)
-        self.config_button.grid(row=2, column=2, sticky='ew', padx=10, pady=10)
+        self.config_button.grid(row=2, column=2, sticky='ew', padx=10, pady=5)
 
         self.schedule_start_button = ttk.Button(root, text="Start Schedule", command=self.start_schedule)
-        self.schedule_start_button.grid(row=3, column=0, sticky='ew', padx=10, pady=10)
+        self.schedule_start_button.grid(row=3, column=0, sticky='ew', padx=10, pady=5)
         self.schedule_stop_button = ttk.Button(root, text="Stop Schedule", command=self.stop_schedule, state='disabled')
-        self.schedule_stop_button.grid(row=3, column=1, sticky='ew', padx=10, pady=10)
+        self.schedule_stop_button.grid(row=3, column=1, sticky='ew', padx=10, pady=5)
         self.schedule_status_button = ttk.Button(root, text="Schedule Status", command=self.show_schedule_status)
-        self.schedule_status_button.grid(row=3, column=2, sticky='ew', padx=10, pady=10)
+        self.schedule_status_button.grid(row=3, column=2, sticky='ew', padx=10, pady=5)
+
+        self.instructions_button = ttk.Button(root, text="Instructions", command=self.show_instructions)
+        self.instructions_button.grid(row=4, column=0, columnspan=3, sticky='ew', padx=10, pady=10)
 
         self.stop_event = Event()
         self.scraper_thread = None
@@ -51,6 +55,10 @@ class NewsScraperApp:
         self.scheduler = ScraperScheduler(self)
 
         self.update_schedule_buttons()
+
+        # Configure grid weights for resizing
+        self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_columnconfigure(0, weight=1)
 
     def log_message(self, message, tag=None):
         self.log.configure(state='normal')
@@ -113,6 +121,12 @@ class NewsScraperApp:
     def show_schedule_status(self):
         status = self.scheduler.status()
         self.log_message(status, 'info')
+
+
+    def show_instructions(self):
+        instructions_window = tk.Toplevel(self.root)
+        instructions_window.grab_set()
+        InstructionsWindow(instructions_window, self)
 
     def update_schedule_buttons(self):
         if self.scheduler.is_running():
